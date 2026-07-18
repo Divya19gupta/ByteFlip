@@ -12,6 +12,16 @@ from google import genai
 load_dotenv()
 client = genai.Client()
 
+from chromadb import Documents, EmbeddingFunction, Embeddings
+
+class GeminiEmbeddingFunction(EmbeddingFunction):
+    def __call__(self, input: Documents) -> Embeddings:
+        result = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=input,
+        )
+        return [e.values for e in result.embeddings]
+
 app = FastAPI()
 
 app.add_middleware(
@@ -33,13 +43,18 @@ async def startup_tasks():
             json.dump({"queue": [], "seen": []}, f)
 
     chroma_client = chromadb.PersistentClient(path="./chroma_db")
-    collection = chroma_client.get_or_create_collection(name="problems")
+    collection = chroma_client.get_or_create_collection(
+        name="problems",
+        embedding_function=GeminiEmbeddingFunction()
+    )
     if collection.count() == 0:
         with open("problems.json", encoding="utf-8") as f:
             problems = json.load(f)
         ids = [p["id"] for p in problems]
         documents = [f"{p['title']}. Pattern: {p['pattern']}. Trick: {p['trick']}" for p in problems]
-        collection.add(ids=ids, documents=documents)
+        batch_size = 100
+        for i in range(0, len(ids), batch_size):
+            collection.add(ids=ids[i:i + batch_size], documents=documents[i:i + batch_size])
 
 
 @app.get("/")
@@ -194,7 +209,10 @@ async def getHints(id: str):
 
         text = f"{current_problem['title']}. Pattern: {current_problem['pattern']}. Trick: {current_problem['trick']}"
         chroma_client = chromadb.PersistentClient(path="./chroma_db")
-        collection = chroma_client.get_or_create_collection(name="problems")
+        collection = chroma_client.get_or_create_collection(
+            name="problems",
+            embedding_function=GeminiEmbeddingFunction()
+        )
 
         results = collection.query(
             query_texts=[text],
