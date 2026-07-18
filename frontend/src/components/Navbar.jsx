@@ -23,30 +23,22 @@ export default function Navbar({ current, onNavigate }) {
     <nav style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '16px 32px', background: '#fff', borderBottom: '1px solid #EBEBEB',
-      position: 'sticky', top: 0, zIndex: 100
+      position: 'sticky', top: 0, zIndex: 100,
+      boxShadow: '0 1px 0 rgba(28,31,46,0.02)',
     }}>
-      <div
-        onClick={() => onNavigate('home')}
-        style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.5px', cursor: 'pointer', color: '#1C1F2E' }}
-      >
+      <div onClick={() => onNavigate('home')} style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.5px', cursor: 'pointer', color: '#1C1F2E' }}>
         Byte<span style={{ color: '#C85E38' }}>Flip</span>
       </div>
       <div style={{ display: 'flex', gap: 4, background: '#F3F3F1', borderRadius: 9, padding: 3 }}>
         {['problems', 'revision'].map(p => (
-          <div
-            key={p}
-            onClick={() => onNavigate(p)}
-            style={{
-              padding: '7px 20px', borderRadius: 7, fontSize: 13, fontWeight: 500,
-              cursor: 'pointer', textTransform: 'capitalize',
-              background: current === p ? '#fff' : 'transparent',
-              color: current === p ? '#1C1F2E' : '#888',
-              boxShadow: current === p ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
-              transition: 'all .15s'
-            }}
-          >
-            {p}
-          </div>
+          <div key={p} onClick={() => onNavigate(p)} style={{
+            padding: '7px 20px', borderRadius: 7, fontSize: 13, fontWeight: 500,
+            cursor: 'pointer', textTransform: 'capitalize',
+            background: current === p ? '#fff' : 'transparent',
+            color: current === p ? '#1C1F2E' : '#888',
+            boxShadow: current === p ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
+            transition: 'all .15s'
+          }}>{p}</div>
         ))}
       </div>
     </nav>
