@@ -1,4 +1,5 @@
 import json
+import time
 
 from dotenv import load_dotenv
 from google import genai
@@ -30,12 +31,13 @@ collection = chroma_client.get_or_create_collection(
 ids = [p['id'] for p in problems]
 documents = [f"{p['title']}. Pattern: {p['pattern']}. Trick: {p['trick']}" for p in problems]
 
-batch_size = 100
+batch_size = 15
 for i in range(0, len(ids), batch_size):
     collection.add(
         ids=ids[i:i + batch_size],
         documents=documents[i:i + batch_size],
     )
     print(f"embedded {min(i + batch_size, len(ids))}/{len(ids)}")
+    time.sleep(15)
 
 print(f"Done. Embedded {len(ids)} problems into ./chroma_db")

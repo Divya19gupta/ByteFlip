@@ -1,7 +1,6 @@
 # Python / backend
 __pycache__/
 venv/
-backend/chroma_db/
 backend/session.json
 backend/solved.json
 backend/.session.json

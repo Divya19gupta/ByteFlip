@@ -3,6 +3,7 @@ import random
 from pathlib import Path
 
 import chromadb
+from chromadb import Documents, EmbeddingFunction, Embeddings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -12,7 +13,6 @@ from google import genai
 load_dotenv()
 client = genai.Client()
 
-from chromadb import Documents, EmbeddingFunction, Embeddings
 
 class GeminiEmbeddingFunction(EmbeddingFunction):
     def __call__(self, input: Documents) -> Embeddings:
@@ -21,6 +21,7 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
             contents=input,
         )
         return [e.values for e in result.embeddings]
+
 
 app = FastAPI()
 
@@ -41,20 +42,6 @@ async def startup_tasks():
     if not Path("session.json").exists():
         with open("session.json", "w", encoding="utf-8") as f:
             json.dump({"queue": [], "seen": []}, f)
-
-    chroma_client = chromadb.PersistentClient(path="./chroma_db")
-    collection = chroma_client.get_or_create_collection(
-        name="problems",
-        embedding_function=GeminiEmbeddingFunction()
-    )
-    if collection.count() == 0:
-        with open("problems.json", encoding="utf-8") as f:
-            problems = json.load(f)
-        ids = [p["id"] for p in problems]
-        documents = [f"{p['title']}. Pattern: {p['pattern']}. Trick: {p['trick']}" for p in problems]
-        batch_size = 100
-        for i in range(0, len(ids), batch_size):
-            collection.add(ids=ids[i:i + batch_size], documents=documents[i:i + batch_size])
 
 
 @app.get("/")
