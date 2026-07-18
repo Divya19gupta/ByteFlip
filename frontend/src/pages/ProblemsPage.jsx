@@ -3,7 +3,7 @@ import Navbar, { TOPIC_COLORS } from '../components/Navbar'
 import PageHeader from '../components/PageHeader'
 import ByteMeter from '../components/ByteMeter'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API = import.meta.env.VITE_API_URL || ' https://byteflip-ep4x.onrender.com'
 
 export default function ProblemsPage({ onNavigate }) {
   const [problems, setProblems] = useState([])
