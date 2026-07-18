@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import Navbar, { TOPIC_COLORS } from '../components/Navbar'
 import PageHeader from '../components/PageHeader'
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 const topics = [
   'Solve Problems on Arrays', 'Binary Search', 'Dynamic Programming',
   'Graphs', 'Learn LinkedList', 'Binary Trees', 'Stack and Queues',
@@ -25,14 +27,14 @@ export default function RevisionPage({ onNavigate }) {
   }, [])
 
   function fetchSolvedCount() {
-    fetch('http://localhost:8000/solved')
+    fetch(`${API}/solved`)
       .then(r => r.json())
       .then(data => setSolvedCount(data.length))
       .catch(e => console.error(e))
   }
 
   function fetchSessionStatus() {
-    fetch('http://localhost:8000/session/status')
+    fetch(`${API}/session/status`)
       .then(r => r.json())
       .then(data => setSessionStatus({ seen: data.seen || 0, remaining: data.remaining || 0 }))
       .catch(e => console.error(e))
@@ -44,7 +46,7 @@ export default function RevisionPage({ onNavigate }) {
     setRevealed([])
     setHint(null)
     try {
-      const res = await fetch('http://localhost:8000/session/current')
+      const res = await fetch(`${API}/session/current`)
       const data = await res.json()
       setCard(data.current_problem)
       setRemainingAfter(data.remaining_after ?? 0)
@@ -58,7 +60,7 @@ export default function RevisionPage({ onNavigate }) {
     setRevealed([])
     setHint(null)
     try {
-      const res = await fetch('http://localhost:8000/session/current', { method: 'POST' })
+      const res = await fetch(`${API}/session/current`, { method: 'POST' })
       const data = await res.json()
       setCard(data.current_problem)
       setRemainingAfter(data.remaining_after ?? 0)
@@ -68,7 +70,7 @@ export default function RevisionPage({ onNavigate }) {
 
   async function finishSession() {
     try {
-      await fetch('http://localhost:8000/session/current', { method: 'POST' })
+      await fetch(`${API}/session/current`, { method: 'POST' })
     } catch (e) { console.error(e) }
     fetchSolvedCount()
     fetchSessionStatus()
@@ -78,7 +80,7 @@ export default function RevisionPage({ onNavigate }) {
   async function getHint() {
     setHintLoading(true)
     try {
-      const res = await fetch(`http://localhost:8000/hint/${card.id}`, { method: 'POST' })
+      const res = await fetch(`${API}/hint/${card.id}`, { method: 'POST' })
       const data = await res.json()
       setHint(data.hint)
     } catch (e) { console.error(e) }
@@ -140,7 +142,7 @@ export default function RevisionPage({ onNavigate }) {
               </div>
               <div style={{ fontSize: 13.5, color: '#9098B1', marginBottom: 22, maxWidth: 380, lineHeight: 1.6 }}>
                 {disabled
-                  ? 'Tick off a problem on the Problems page first, then it lands here, shuffled and ready to revise.'
+                  ? 'Tick off a problem on the Problems page first — then it lands here, shuffled and ready to revise.'
                   : hasProgress
                     ? `${sessionStatus.seen} seen · ${sessionStatus.remaining} left in this round`
                     : `${solvedCount} problem${solvedCount === 1 ? '' : 's'} solved — shuffled and ready.`}
@@ -156,7 +158,7 @@ export default function RevisionPage({ onNavigate }) {
           </div>
 
           <div style={{ fontSize: 11, fontWeight: 600, color: '#B7B7B0', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: 12, fontFamily: "'JetBrains Mono', monospace" }}>
-            By topic: coming soon
+            By topic — coming soon
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

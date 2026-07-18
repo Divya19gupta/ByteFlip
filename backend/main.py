@@ -1,7 +1,8 @@
 import json
 import random
-import chromadb
+from pathlib import Path
 
+import chromadb
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -9,8 +10,7 @@ from dotenv import load_dotenv
 from google import genai
 
 load_dotenv()
-client_ai = genai.Client() 
-
+client = genai.Client()
 
 app = FastAPI()
 
@@ -20,6 +20,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_tasks():
+    if not Path("solved.json").exists():
+        with open("solved.json", "w", encoding="utf-8") as f:
+            json.dump([], f)
+
+    if not Path("session.json").exists():
+        with open("session.json", "w", encoding="utf-8") as f:
+            json.dump({"queue": [], "seen": []}, f)
+
+    chroma_client = chromadb.PersistentClient(path="./chroma_db")
+    collection = chroma_client.get_or_create_collection(name="problems")
+    if collection.count() == 0:
+        with open("problems.json", encoding="utf-8") as f:
+            problems = json.load(f)
+        ids = [p["id"] for p in problems]
+        documents = [f"{p['title']}. Pattern: {p['pattern']}. Trick: {p['trick']}" for p in problems]
+        collection.add(ids=ids, documents=documents)
 
 
 @app.get("/")
@@ -48,7 +68,7 @@ async def addSolvedProblemById(id: str):
             if id not in solved_problems:
                 solved_problems.append(id)
                 session_data["queue"].append(id)
-                session_file.seek(0)    
+                session_file.seek(0)
                 solved_file.seek(0)
                 json.dump(solved_problems, solved_file, indent=4)
                 json.dump(session_data, session_file, indent=4)
@@ -64,7 +84,7 @@ async def addSolvedProblemById(id: str):
     except Exception as e:
         return {"error": str(e)}
 
-@app.delete("/solved/{id}")  
+@app.delete("/solved/{id}")
 async def removeSolvedProblemById(id: str):
     try:
         with open("solved.json", "r+", encoding="utf-8") as solved_file, open("session.json", "r+", encoding="utf-8") as session_file:
@@ -103,7 +123,7 @@ async def getAllSolvedProblemsByIds():
         return {"error": "Invalid JSON in solved problems or problems file"}
     except Exception as e:
         return {"error": str(e)}
-        
+
 @app.get("/quiz")
 async def getQuizProblems():
     try:
@@ -112,37 +132,19 @@ async def getQuizProblems():
         return quiz_problems
     except Exception as e:
         return {"error": str(e)}
-    
+
 def get_solved_problems():
     with open("solved.json", encoding="utf-8") as solved_file:
-            solved_problems = json.load(solved_file)
+        solved_problems = json.load(solved_file)
     with open("problems.json", encoding="utf-8") as problems_file:
-            problems = json.load(problems_file)
-        # problem_details = []
-        # for problem in problems:
-        #     for solved_id in solved_problems:
-        #         if problem["id"] == solved_id:
-        #             problem_details.append(problem)
+        problems = json.load(problems_file)
     problem_details = [p for p in problems if p["id"] in solved_problems]
     return problem_details
-
-@app.get("/session/current")
-async def setCurrentProblemInSession():
-    try:
-        with open("session.json", "r", encoding="utf-8") as session_file, open("problems.json", "r", encoding="utf-8") as problem_file:
-            problem_data = json.load(problem_file)
-            session_data = json.load(session_file)
-            queueId = session_data["queue"][0]
-            current_problem = findProblem(queueId, problem_data)
-            remaining_after = len(session_data["queue"]) - 1
-        return {"current_problem": current_problem, "remaining_after": remaining_after}
-    except Exception as e:
-        return {"error": str(e)}
 
 @app.post("/session/current")
 async def advanceToNextProblem():
     try:
-        with open('session.json','r+', encoding="utf-8") as session_file, open('problems.json', 'r', encoding="utf-8") as problem_file:
+        with open('session.json', 'r+', encoding="utf-8") as session_file, open('problems.json', 'r', encoding="utf-8") as problem_file:
             session_data = json.load(session_file)
             problem_data = json.load(problem_file)
             if session_data["queue"]:
@@ -159,11 +161,25 @@ async def advanceToNextProblem():
             session_file.seek(0)
             json.dump(session_data, session_file, indent=4)
             session_file.truncate()
-            
+
             return {"current_problem": next_problem, "remaining_after": remaining_after}
     except Exception as e:
         return {"error": str(e)}
-def findProblem(problem_id,problem_data):
+
+@app.get("/session/current")
+async def setCurrentProblemInSession():
+    try:
+        with open("session.json", "r", encoding="utf-8") as session_file, open("problems.json", "r", encoding="utf-8") as problem_file:
+            problem_data = json.load(problem_file)
+            session_data = json.load(session_file)
+            queueId = session_data["queue"][0]
+            current_problem = findProblem(queueId, problem_data)
+            remaining_after = len(session_data["queue"]) - 1
+        return {"current_problem": current_problem, "remaining_after": remaining_after}
+    except Exception as e:
+        return {"error": str(e)}
+
+def findProblem(problem_id, problem_data):
     for problem in problem_data:
         if problem["id"] == problem_id:
             return problem
@@ -171,20 +187,20 @@ def findProblem(problem_id,problem_data):
 
 @app.post("/hint/{id}")
 async def getHints(id: str):
-    try: 
-        with open('problems.json',encoding="utf-8") as problems_file:
+    try:
+        with open('problems.json', encoding="utf-8") as problems_file:
             problems = json.load(problems_file)
-        current_problem = findProblem(id,problems)
-        
+        current_problem = findProblem(id, problems)
+
         text = f"{current_problem['title']}. Pattern: {current_problem['pattern']}. Trick: {current_problem['trick']}"
-        client = chromadb.PersistentClient(path="./chroma_db")
-        collection = client.get_or_create_collection(name="problems")
-    
+        chroma_client = chromadb.PersistentClient(path="./chroma_db")
+        collection = chroma_client.get_or_create_collection(name="problems")
+
         results = collection.query(
-            query_texts = [text],
-            n_results = 4
+            query_texts=[text],
+            n_results=4
         )
-    
+
         similar_problems = results['documents'][0]
         prompt = f"""
             The user is stuck in a DSA problem. Just give them hints based on the following:
@@ -192,19 +208,20 @@ async def getHints(id: str):
             Pattern: {current_problem['pattern']}
 
             Similar titles = {similar_problems}
-            Give useful hints in 2-3 lines, just for a the user to understand the approach 
-            without revelaing the whole solution. Never reveal the whole solution.
+            Give useful hints in 2-3 lines, just for the user to understand the approach
+            without revealing the whole solution. Never reveal the whole solution.
+            Write in plain sentences only — no markdown, no asterisks, no bullet points.
         """
-       
-        response = client_ai.models.generate_content(
+
+        response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt
         )
         return {'hint': response.text}
-    
+
     except Exception as e:
         return {"error": str(e)}
-                
+
 @app.get("/session/status")
 async def getSessionStatus():
     try:

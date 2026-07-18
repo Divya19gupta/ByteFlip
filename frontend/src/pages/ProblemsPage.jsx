@@ -3,6 +3,8 @@ import Navbar, { TOPIC_COLORS } from '../components/Navbar'
 import PageHeader from '../components/PageHeader'
 import ByteMeter from '../components/ByteMeter'
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 export default function ProblemsPage({ onNavigate }) {
   const [problems, setProblems] = useState([])
   const [solved, setSolved] = useState([])
@@ -14,8 +16,8 @@ export default function ProblemsPage({ onNavigate }) {
   async function fetchData() {
     try {
       const [p, s] = await Promise.all([
-        fetch('http://localhost:8000/problems').then(r => r.json()),
-        fetch('http://localhost:8000/solved').then(r => r.json()),
+        fetch(`${API}/problems`).then(r => r.json()),
+        fetch(`${API}/solved`).then(r => r.json()),
       ])
       setProblems(p)
       setSolved(s.map(x => x.id))
@@ -30,10 +32,10 @@ export default function ProblemsPage({ onNavigate }) {
   async function toggleSolved(id) {
     const isSolved = solved.includes(id)
     if (isSolved) {
-      await fetch(`http://localhost:8000/solved/${id}`, { method: 'DELETE' })
+      await fetch(`${API}/solved/${id}`, { method: 'DELETE' })
       setSolved(prev => prev.filter(s => s !== id))
     } else {
-      await fetch(`http://localhost:8000/solved/${id}`, { method: 'POST' })
+      await fetch(`${API}/solved/${id}`, { method: 'POST' })
       setSolved(prev => [...prev, id])
     }
   }
